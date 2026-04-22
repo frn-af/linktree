@@ -63,7 +63,7 @@ export default function Home() {
             {/* Presence Link */}
             <a
               href="/presence"
-              className="group block w-full bg-white text-gray-900 p-4 rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-between shadow-xl"
+              className="group  w-full bg-white text-gray-900 p-4 rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-between shadow-xl"
             >
               <span className="font-bold text-lg flex items-center gap-2">
                 <Users size={20} className="text-[#FF7F50]" />
@@ -83,9 +83,9 @@ export default function Home() {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group block w-full bg-white/10 backdrop-blur-md border border-white/20 p-4 rounded-xl hover:bg-white/20 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-between"
+                className="group flex w-full text-black bg-white/90 backdrop-blur-md border border-white/80 p-4 rounded-xl hover:bg-white/70 transition-all duration-300 transform hover:scale-[1.02] items-center justify-between"
               >
-                <span className="font-semibold text-lg">{link.title}</span>
+                <span className="font-semibold text-lg ">{link.title}</span>
                 <ExternalLink
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                   size={18}
@@ -101,7 +101,7 @@ export default function Home() {
           </div>
 
           {/* Footer */}
-          <div className="mt-16 text-gray-400 text-sm text-center italic">
+          <div className="mt-16 text-white text-sm text-center italic">
             Jangan Aneh2 Gunakan Data Semestinya Jangan Sampai Bocor!!!!!!!
           </div>
         </div>
