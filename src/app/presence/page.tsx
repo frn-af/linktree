@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { Dithering } from '@paper-design/shaders-react';
-import { User, Building, Briefcase, Mail, Send, CheckCircle2, Map } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Building, Briefcase, Mail, Send, CheckCircle2, Map, Clock } from 'lucide-react';
 
 export default function PresencePage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentTime, setCurrentTime] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     institution: '',
@@ -14,6 +14,21 @@ export default function PresencePage() {
     email: '',
     rpjpnUnit: ''
   });
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleString('id-ID', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric', 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      }));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,17 +46,10 @@ export default function PresencePage() {
 
   if (submitted) {
     return (
-      <div className="relative min-h-screen text-white flex items-center justify-center p-4">
-         <div className="fixed inset-0 z-0">
-          <Dithering
-            style={{ width: '100%', height: '100%' }}
-            colorFront="#FF7F50"
-            colorBack="#111827"
-            shape="simplex"
-            type="random"
-            speed={0.5}
-            scale={1.5}
-          />
+      <div className="relative min-h-screen text-white flex items-center justify-center p-4 bg-[#111827]">
+        <div className="fixed inset-0 z-0">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#FF7F50]/20 via-[#111827] to-[#111827]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-[#FF7F50]/10 via-transparent to-transparent"></div>
         </div>
         <div className="relative z-10 bg-white/10 backdrop-blur-2xl p-8 rounded-3xl border border-white/20 shadow-2xl max-w-md w-full text-center">
           <CheckCircle2 size={64} className="mx-auto text-green-400 mb-6" />
@@ -56,17 +64,10 @@ export default function PresencePage() {
   }
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden">
+    <div className="relative min-h-screen text-white overflow-hidden bg-[#111827]">
       <div className="fixed inset-0 z-0">
-        <Dithering
-          style={{ width: '100%', height: '100%' }}
-          colorFront="#FF7F50"
-          colorBack="#111827"
-          shape="simplex"
-          type="random"
-          speed={0.5}
-          scale={1.5}
-        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#FF7F50]/20 via-[#111827] to-[#111827]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-[#FF7F50]/10 via-transparent to-transparent"></div>
       </div>
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4 overflow-y-auto py-12">
@@ -77,6 +78,12 @@ export default function PresencePage() {
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">Formulir Kehadiran</h1>
             <p className="mt-2 text-gray-300 px-4">Silakan isi data diri Anda untuk absensi lokakarya.</p>
+            
+            {/* Displaying default time */}
+            <div className="mt-4 inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-sm font-medium">
+              <Clock size={16} className="text-[#FF7F50]" />
+              <span>{currentTime || 'Loading time...'}</span>
+            </div>
           </div>
 
           <form onSubmit={handleSubmit} className="bg-white/10 backdrop-blur-xl p-8 rounded-3xl border border-white/20 shadow-2xl space-y-5">

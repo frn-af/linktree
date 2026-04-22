@@ -1,6 +1,5 @@
 "use client";
 
-import { Dithering } from "@paper-design/shaders-react";
 import { ExternalLink, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -24,18 +23,11 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="relative min-h-screen text-white overflow-hidden">
-      {/* Background Shader Layer */}
+    <div className="relative min-h-screen text-white overflow-hidden bg-[#111827]">
+      {/* Background Gradient Layer */}
       <div className="fixed inset-0 z-0">
-        <Dithering
-          style={{ width: "100%", height: "100%" }}
-          colorFront="#FF7F50"
-          colorBack="#111827"
-          shape="simplex"
-          type="random"
-          speed={0.5}
-          scale={1.5}
-        />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#FF7F50]/20 via-[#111827] to-[#111827]"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-[#FF7F50]/10 via-transparent to-transparent"></div>
       </div>
 
       {/* Content Layer */}
@@ -102,7 +94,7 @@ export default function Home() {
 
           {/* Footer */}
           <div className="mt-16 text-white text-sm text-center italic">
-            Jangan Aneh2 Gunakan Data Semestinya Jangan Sampai Bocor!!!!!!!
+            Jangan Aneh2, Gunakan Data Semestinya Jangan Sampai Bocor!!!!!!!
           </div>
         </div>
       </div>
