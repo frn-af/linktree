@@ -16,7 +16,8 @@ export async function POST(request: Request) {
       name: body.name,
       institution: body.institution,
       position: body.position,
-      phoneNumber: body.phoneNumber,
+      email: body.email,
+      rpjpnUnit: body.rpjpnUnit,
     }).returning();
     
     return NextResponse.json(newEntry);

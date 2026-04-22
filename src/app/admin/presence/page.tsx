@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Users, Phone, Building, Briefcase, Clock, Download, LogOut } from 'lucide-react';
+import { Users, Mail, Building, Briefcase, Clock, Download, LogOut, Map } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 interface Presence {
@@ -9,7 +9,8 @@ interface Presence {
   name: string;
   institution: string;
   position: string;
-  phoneNumber: string;
+  email: string;
+  rpjpnUnit: string;
   timestamp: string;
 }
 
@@ -33,13 +34,14 @@ export default function AdminPresencePage() {
   };
 
   const exportToCSV = () => {
-    const headers = ['Nama', 'Instansi', 'Jabatan', 'No. WhatsApp', 'Waktu'];
+    const headers = ['Nama', 'Instansi', 'Jabatan', 'Email', 'Unit RPJPn', 'Waktu'];
     const csvContent = presenceList.map(p => [
-      p.name,
-      p.institution,
-      p.position,
-      `'${p.phoneNumber}`, // Adding ' to force string in Excel
-      new Date(p.timestamp).toLocaleString('id-ID')
+      `"${p.name}"`,
+      `"${p.institution}"`,
+      `"${p.position}"`,
+      `"${p.email}"`,
+      `"${p.rpjpnUnit}"`,
+      `"${new Date(p.timestamp).toLocaleString('id-ID')}"`
     ].join(',')).join('\n');
     
     const blob = new Blob([[headers.join(','), csvContent].join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -55,7 +57,7 @@ export default function AdminPresencePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8 font-sans">
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
           <button
@@ -96,7 +98,8 @@ export default function AdminPresencePage() {
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Institution</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Position</th>
-                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">WhatsApp</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">RPJPn Unit</th>
                   <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Check-in Time</th>
                 </tr>
               </thead>
@@ -116,10 +119,16 @@ export default function AdminPresencePage() {
                        {p.position}
                     </td>
                     <td className="px-6 py-5">
-                      <a href={`https://wa.me/${p.phoneNumber.replace(/[^0-9]/g, '')}`} target="_blank" className="flex items-center gap-2 text-[#FF7F50] hover:underline font-medium text-sm">
-                        <Phone size={14} />
-                        {p.phoneNumber}
+                      <a href={`mailto:${p.email}`} className="flex items-center gap-2 text-[#FF7F50] hover:underline font-medium text-sm">
+                        <Mail size={14} />
+                        {p.email}
                       </a>
+                    </td>
+                    <td className="px-6 py-5">
+                      <div className="flex items-center gap-2 text-gray-600">
+                        <Map size={14} className="text-gray-400" />
+                        <span className="text-sm">{p.rpjpnUnit}</span>
+                      </div>
                     </td>
                     <td className="px-6 py-5">
                        <div className="flex items-center gap-2 text-xs text-gray-400">

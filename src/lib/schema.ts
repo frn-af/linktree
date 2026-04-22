@@ -13,6 +13,7 @@ export const presence = pgTable('presence', {
   name: text('name').notNull(),
   institution: text('institution').notNull(),
   position: text('position').notNull(),
-  phoneNumber: text('phone_number').notNull(),
+  email: text('email').notNull(),
+  rpjpnUnit: text('rpjpn_unit').notNull(),
   timestamp: timestamp('timestamp').defaultNow(),
 });
