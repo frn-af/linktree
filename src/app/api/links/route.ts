@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server';
-import { getLinks, saveLinks, Link } from '@/lib/db';
+import { db } from '@/lib/db';
+import { links } from '@/lib/schema';
+import { eq } from 'drizzle-orm';
 
 export async function GET() {
-  const links = await getLinks();
-  // Sort by order
-  links.sort((a, b) => a.order - b.order);
-  return NextResponse.json(links);
+  const allLinks = await db.query.links.findMany({
+    orderBy: (l, { asc }) => [asc(l.order)],
+  });
+  return NextResponse.json(allLinks);
 }
 
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const links = await getLinks();
-    
-    const newLink: Link = {
-      id: crypto.randomUUID(),
+    const [newLink] = await db.insert(links).values({
       title: body.title,
       url: body.url,
-      order: body.order ?? links.length,
-    };
-    
-    links.push(newLink);
-    await saveLinks(links);
+      order: body.order ?? 0,
+    }).returning();
     
     return NextResponse.json(newLink);
   } catch (error) {
@@ -32,17 +28,12 @@ export async function POST(request: Request) {
 export async function PUT(request: Request) {
   try {
     const body = await request.json();
-    const links = await getLinks();
-    
-    const index = links.findIndex(l => l.id === body.id);
-    if (index === -1) {
-      return NextResponse.json({ error: 'Link not found' }, { status: 404 });
-    }
-    
-    links[index] = { ...links[index], ...body };
-    await saveLinks(links);
-    
-    return NextResponse.json(links[index]);
+    const [updatedLink] = await db.update(links)
+      .set({ title: body.title, url: body.url, order: body.order })
+      .where(eq(links.id, body.id))
+      .returning();
+      
+    return NextResponse.json(updatedLink);
   } catch (error) {
     return NextResponse.json({ error: 'Failed to update link' }, { status: 500 });
   }
@@ -52,15 +43,9 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 });
     
-    if (!id) {
-      return NextResponse.json({ error: 'ID required' }, { status: 400 });
-    }
-    
-    let links = await getLinks();
-    links = links.filter(l => l.id !== id);
-    await saveLinks(links);
-    
+    await db.delete(links).where(eq(links.id, id));
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Failed to delete link' }, { status: 500 });

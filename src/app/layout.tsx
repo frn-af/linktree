@@ -15,14 +15,21 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title:
     "Lokakarya Moniroting RPJP dan Penyusunan RPJPn KSA/KPA Lingkup Balai Besar KSDA Papua Barat Daya",
-  description: "Ayo Gabung dan Diskusikan Masa Depan Konservasi!",
+  description:
+    "Lokakarya Moniroting RPJP dan Penyusunan RPJPn KSA/KPA Lingkup Balai Besar KSDA Papua Barat Daya",
   icons: {
     icon: [
       { url: "/favicon/favicon.ico" },
       { url: "/favicon/favicon-96x96.png", sizes: "96x96", type: "image/png" },
       { url: "/favicon/favicon.svg", type: "image/svg+xml" },
     ],
-    apple: [{ url: "/favicon/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+    apple: [
+      {
+        url: "/favicon/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
+      },
+    ],
   },
   manifest: "/favicon/site.webmanifest",
 };
