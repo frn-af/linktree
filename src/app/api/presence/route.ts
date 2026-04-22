@@ -4,7 +4,7 @@ import { presence } from '@/lib/schema';
 
 export async function GET() {
   const allPresence = await db.query.presence.findMany({
-    orderBy: (p, { desc }) => [desc(p.timestamp)],
+    orderBy: (p, { desc }) => [desc(p.checkInTime)],
   });
   return NextResponse.json(allPresence);
 }

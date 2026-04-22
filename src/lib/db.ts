@@ -21,6 +21,6 @@ export async function getLinks() {
 // Presence
 export async function getPresence() {
   return await db.query.presence.findMany({
-    orderBy: (p, { desc }) => [desc(p.timestamp)],
+    orderBy: (p, { desc }) => [desc(p.checkInTime)],
   });
 }

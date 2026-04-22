@@ -11,7 +11,7 @@ interface Presence {
   position: string;
   email: string;
   rpjpnUnit: string;
-  timestamp: string;
+  checkInTime: string;
 }
 
 export default function AdminPresencePage() {
@@ -41,7 +41,7 @@ export default function AdminPresencePage() {
       `"${p.position}"`,
       `"${p.email}"`,
       `"${p.rpjpnUnit}"`,
-      `"${new Date(p.timestamp).toLocaleString('id-ID')}"`
+      `"${new Date(p.checkInTime).toLocaleString('id-ID')}"`
     ].join(',')).join('\n');
     
     const blob = new Blob([[headers.join(','), csvContent].join('\n')], { type: 'text/csv;charset=utf-8;' });
@@ -133,7 +133,7 @@ export default function AdminPresencePage() {
                     <td className="px-6 py-5">
                        <div className="flex items-center gap-2 text-xs text-gray-400">
                         <Clock size={14} />
-                        {new Date(p.timestamp).toLocaleString('id-ID')}
+                        {new Date(p.checkInTime).toLocaleString('id-ID')}
                       </div>
                     </td>
                   </tr>

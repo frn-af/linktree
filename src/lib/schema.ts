@@ -16,4 +16,5 @@ export const presence = pgTable('presence', {
   email: text('email').notNull(),
   rpjpnUnit: text('rpjpn_unit').notNull(),
   timestamp: timestamp('timestamp').defaultNow(),
+  checkInTime: timestamp('check_in_time').defaultNow(),
 });
