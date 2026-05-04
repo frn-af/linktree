@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { links } from '@/lib/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const showAll = searchParams.get('all') === 'true';
+
   const allLinks = await db.query.links.findMany({
+    where: showAll ? undefined : and(eq(links.isArchived, false)),
     orderBy: (l, { asc }) => [asc(l.order)],
   });
   return NextResponse.json(allLinks);
@@ -29,7 +33,13 @@ export async function PUT(request: Request) {
   try {
     const body = await request.json();
     const [updatedLink] = await db.update(links)
-      .set({ title: body.title, url: body.url, order: body.order })
+      .set({ 
+        title: body.title, 
+        url: body.url, 
+        order: body.order,
+        isVisible: body.isVisible,
+        isArchived: body.isArchived
+      })
       .where(eq(links.id, body.id))
       .returning();
       

@@ -8,18 +8,26 @@ interface Link {
   title: string;
   url: string;
   order: number;
+  isVisible: boolean;
+  isArchived: boolean;
 }
 
 export default function Home() {
   const [links, setLinks] = useState<Link[]>([]);
+  const [showPresenceButton, setShowPresenceButton] = useState(false);
 
   useEffect(() => {
-    async function fetchLinks() {
+    async function fetchData() {
       const res = await fetch("/api/links");
       const data = await res.json();
       setLinks(data.sort((a: Link, b: Link) => a.order - b.order));
+
+      const sessionRes = await fetch("/api/presence/sessions");
+      const sessionData = await sessionRes.json();
+      const activeSession = sessionData.find((s: any) => s.isActive);
+      setShowPresenceButton(!!activeSession && activeSession.isVisible);
     }
-    fetchLinks();
+    fetchData();
   }, []);
 
   return (
@@ -53,23 +61,25 @@ export default function Home() {
           {/* Links Section */}
           <div className="w-full space-y-4">
             {/* Presence Link */}
-            <a
-              href="/presence"
-              className="group  w-full bg-white text-gray-900 p-4 rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-between shadow-xl"
-            >
-              <span className="font-bold text-lg flex items-center gap-2">
-                <Users size={20} className="text-[#FF7F50]" />
-                Absensi Kehadiran
-              </span>
-              <ExternalLink
-                className="opacity-50 group-hover:opacity-100 transition-opacity"
-                size={18}
-              />
-            </a>
+            {showPresenceButton && (
+              <a
+                href="/presence"
+                className="group  w-full bg-white text-gray-900 p-4 rounded-xl hover:bg-gray-100 transition-all duration-300 transform hover:scale-[1.02] flex items-center justify-between shadow-xl"
+              >
+                <span className="font-bold text-lg flex items-center gap-2">
+                  <Users size={20} className="text-[#FF7F50]" />
+                  Absensi Kehadiran
+                </span>
+                <ExternalLink
+                  className="opacity-50 group-hover:opacity-100 transition-opacity"
+                  size={18}
+                />
+              </a>
+            )}
 
-            <div className="h-4"></div>
+            {showPresenceButton && <div className="h-4"></div>}
 
-            {links.map((link) => (
+            {links.filter(l => l.isVisible).map((link) => (
               <a
                 key={link.id}
                 href={link.url}
@@ -85,7 +95,7 @@ export default function Home() {
               </a>
             ))}
 
-            {links.length === 0 && (
+            {links.filter(l => l.isVisible).length === 0 && (
               <div className="text-center py-10 text-gray-400">
                 No extra links yet.
               </div>

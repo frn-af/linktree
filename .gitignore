@@ -10,6 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
+# Agents
+.omog
+
 # testing
 /coverage
 
@@ -19,6 +22,7 @@
 
 # production
 /build
+/drizzle
 
 # misc
 .DS_Store

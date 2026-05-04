@@ -7,6 +7,7 @@ export default function PresencePage() {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [activeSession, setActiveSession] = useState<{name: string, id: string} | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     institution: '',
@@ -16,6 +17,14 @@ export default function PresencePage() {
   });
 
   useEffect(() => {
+    async function fetchActiveSession() {
+      const res = await fetch('/api/presence/sessions');
+      const data = await res.json();
+      const active = data.find((s: any) => s.isActive);
+      if (active) setActiveSession(active);
+    }
+    fetchActiveSession();
+
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleString('id-ID', { 
@@ -77,7 +86,8 @@ export default function PresencePage() {
               <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">Formulir Kehadiran</h1>
-            <p className="mt-2 text-gray-300 px-4">Silakan isi data diri Anda untuk absensi lokakarya.</p>
+            <p className="mt-2 text-[#FF7F50] font-bold text-lg px-4">{activeSession?.name || 'Loading event...'}</p>
+            <p className="mt-1 text-gray-300 text-sm px-4 italic">Silakan isi data diri Anda untuk absensi.</p>
             
             {/* Displaying default time */}
             <div className="mt-4 inline-flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-sm font-medium">
