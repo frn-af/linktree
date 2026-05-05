@@ -22,8 +22,8 @@ export default function Home() {
 		<div className="relative min-h-screen text-white overflow-hidden bg-[#111827]">
 			{/* Background Gradient Layer */}
 			<div className="fixed inset-0 z-0">
-				<div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_var(--tw-gradient-stops))] from-[#FF7F50]/20 via-[#111827] to-[#111827]"></div>
-				<div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,_var(--tw-gradient-stops))] from-[#FF7F50]/10 via-transparent to-transparent"></div>
+				<div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--tw-gradient-stops))] from-[#FF7F50]/20 via-[#111827] to-[#111827]"></div>
+				<div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,var(--tw-gradient-stops))] from-[#FF7F50]/10 via-transparent to-transparent"></div>
 			</div>
 
 			{/* Content Layer */}
