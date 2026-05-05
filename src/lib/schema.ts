@@ -33,3 +33,9 @@ export const presence = pgTable('presence', {
   timestamp: timestamp('timestamp').defaultNow(),
   checkInTime: timestamp('check_in_time').defaultNow(),
 });
+
+export const settings = pgTable('settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});

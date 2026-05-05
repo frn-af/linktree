@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { User, Building, Briefcase, Mail, Send, CheckCircle2, Map, Clock } from 'lucide-react';
+import { User, Building, Briefcase, Mail, Send, CheckCircle2, Map, Clock, Loader2 } from 'lucide-react';
+import { usePresenceSessions, useCreatePresenceRecord } from '@/hooks/use-presence';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 export default function PresencePage() {
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
-  const [activeSession, setActiveSession] = useState<{name: string, id: string} | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     institution: '',
@@ -16,15 +17,12 @@ export default function PresencePage() {
     rpjpnUnit: ''
   });
 
-  useEffect(() => {
-    async function fetchActiveSession() {
-      const res = await fetch('/api/presence/sessions');
-      const data = await res.json();
-      const active = data.find((s: any) => s.isActive);
-      if (active) setActiveSession(active);
-    }
-    fetchActiveSession();
+  const { data: sessions = [], isLoading: sessionsLoading } = usePresenceSessions(false);
+  const createRecord = useCreatePresenceRecord();
 
+  const activeSession = sessions.find(s => s.isActive);
+
+  useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date();
       setCurrentTime(now.toLocaleString('id-ID', { 
@@ -41,16 +39,9 @@ export default function PresencePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const res = await fetch('/api/presence', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData),
+    createRecord.mutate(formData, {
+      onSuccess: () => setSubmitted(true)
     });
-    if (res.ok) {
-      setSubmitted(true);
-    }
-    setLoading(false);
   };
 
   if (submitted) {
@@ -64,9 +55,9 @@ export default function PresencePage() {
           <CheckCircle2 size={64} className="mx-auto text-green-400 mb-6" />
           <h1 className="text-3xl font-bold mb-2">Terima Kasih!</h1>
           <p className="text-gray-300 mb-8 text-lg">Kehadiran Anda telah berhasil dicatat.</p>
-          <a href="/" className="inline-block bg-[#FF7F50] text-white px-8 py-3 rounded-xl font-bold hover:opacity-90 transition">
-            Kembali ke Beranda
-          </a>
+          <Button asChild className="bg-[#FF7F50] text-white hover:bg-[#FF7F50]/90 px-8 py-6 rounded-xl font-bold transition h-auto">
+            <a href="/">Kembali ke Beranda</a>
+          </Button>
         </div>
       </div>
     );
@@ -86,7 +77,9 @@ export default function PresencePage() {
               <img src="/logo.svg" alt="Logo" className="w-full h-full object-contain" />
             </div>
             <h1 className="text-3xl font-extrabold tracking-tight">Formulir Kehadiran</h1>
-            <p className="mt-2 text-[#FF7F50] font-bold text-lg px-4">{activeSession?.name || 'Loading event...'}</p>
+            <p className="mt-2 text-[#FF7F50] font-bold text-lg px-4">
+              {sessionsLoading ? 'Loading event...' : (activeSession?.name || 'No active event')}
+            </p>
             <p className="mt-1 text-gray-300 text-sm px-4 italic">Silakan isi data diri Anda untuk absensi.</p>
             
             {/* Displaying default time */}
@@ -101,13 +94,12 @@ export default function PresencePage() {
               <label className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                 <User size={16} /> Nama Lengkap
               </label>
-              <input
-                type="text"
+              <Input
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="Masukkan nama lengkap"
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:ring-2 focus:ring-[#FF7F50] outline-none"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus-visible:ring-[#FF7F50]"
               />
             </div>
 
@@ -115,13 +107,12 @@ export default function PresencePage() {
               <label className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                 <Building size={16} /> Instansi / Unit Kerja
               </label>
-              <input
-                type="text"
+              <Input
                 required
                 value={formData.institution}
                 onChange={(e) => setFormData({...formData, institution: e.target.value})}
                 placeholder="Masukkan instansi"
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:ring-2 focus:ring-[#FF7F50] outline-none"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus-visible:ring-[#FF7F50]"
               />
             </div>
 
@@ -129,13 +120,12 @@ export default function PresencePage() {
               <label className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                 <Briefcase size={16} /> Jabatan
               </label>
-              <input
-                type="text"
+              <Input
                 required
                 value={formData.position}
                 onChange={(e) => setFormData({...formData, position: e.target.value})}
                 placeholder="Masukkan jabatan"
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:ring-2 focus:ring-[#FF7F50] outline-none"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus-visible:ring-[#FF7F50]"
               />
             </div>
 
@@ -143,13 +133,13 @@ export default function PresencePage() {
               <label className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                 <Mail size={16} /> Email
               </label>
-              <input
+              <Input
                 type="email"
                 required
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
                 placeholder="nama@email.com"
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:ring-2 focus:ring-[#FF7F50] outline-none"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus-visible:ring-[#FF7F50]"
               />
             </div>
 
@@ -157,28 +147,29 @@ export default function PresencePage() {
               <label className="text-sm font-semibold text-gray-200 flex items-center gap-2">
                 <Map size={16} /> RPJPn unit kawasan konservasi yang disusun
               </label>
-              <input
-                type="text"
+              <Input
                 required
                 value={formData.rpjpnUnit}
                 onChange={(e) => setFormData({...formData, rpjpnUnit: e.target.value})}
                 placeholder="Masukkan unit kawasan"
-                className="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-white/30 focus:ring-2 focus:ring-[#FF7F50] outline-none"
+                className="bg-white/5 border-white/10 text-white placeholder:text-white/30 h-12 rounded-xl focus-visible:ring-[#FF7F50]"
               />
             </div>
 
-            <button
+            <Button
               type="submit"
-              disabled={loading}
-              className="w-full bg-[#FF7F50] hover:opacity-90 text-white font-bold py-4 rounded-xl transition shadow-lg flex items-center justify-center gap-2 mt-4 disabled:opacity-50"
+              disabled={createRecord.isPending || !activeSession}
+              className="w-full bg-[#FF7F50] hover:bg-[#FF7F50]/90 text-white font-bold py-7 rounded-xl transition shadow-lg flex items-center justify-center gap-2 mt-4 h-auto"
             >
-              {loading ? "Mengirim..." : (
+              {createRecord.isPending ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
                 <>
                   <Send size={18} />
                   Kirim Kehadiran
                 </>
               )}
-            </button>
+            </Button>
           </form>
         </div>
       </div>

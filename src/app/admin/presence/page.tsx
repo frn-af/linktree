@@ -1,148 +1,97 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Users, Mail, Building, Briefcase, Clock, Download, LogOut, Map, Eye, EyeOff, Archive, Trash2, Plus, Check, Settings, ListFilter } from 'lucide-react';
+'use client';
+
+import { useState } from 'react';
+import { Users, Building, Clock, Download, LogOut, Eye, EyeOff, Archive, Trash2, Plus, Check, Settings, ListFilter, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-
-interface PresenceSession {
-  id: string;
-  name: string;
-  description: string;
-  isActive: boolean;
-  isVisible: boolean;
-  isArchived: boolean;
-  createdAt: string;
-}
-
-interface Presence {
-  id: string;
-  sessionId: string;
-  name: string;
-  institution: string;
-  position: string;
-  email: string;
-  rpjpnUnit: string;
-  checkInTime: string;
-  isVisible: boolean;
-  isArchived: boolean;
-}
+import { 
+  usePresenceSessions, 
+  useCreatePresenceSession, 
+  useUpdatePresenceSession, 
+  useDeletePresenceSession,
+  usePresenceRecords,
+  useUpdatePresenceRecord,
+  useDeletePresenceRecord,
+  type PresenceSession,
+  type PresenceRecord
+} from '@/hooks/use-presence';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 export default function AdminPresencePage() {
-  const [sessions, setSessions] = useState<PresenceSession[]>([]);
   const [selectedSessionId, setSelectedSessionId] = useState<string | 'all'>('all');
-  const [presenceList, setPresenceList] = useState<Presence[]>([]);
   const [showArchived, setShowArchived] = useState(false);
   const [showArchivedSessions, setShowArchivedSessions] = useState(false);
   const [isAddingSession, setIsAddingSession] = useState(false);
   const [newSession, setNewSession] = useState({ name: '', description: '', isActive: true });
+  const [deleteConfirmId, setDeleteConfirmId] = useState<{ type: 'session' | 'record', id: string } | null>(null);
+  
   const router = useRouter();
 
-  useEffect(() => {
-    fetchSessions();
-  }, [showArchivedSessions]);
+  const { data: sessions = [], isLoading: sessionsLoading } = usePresenceSessions(showArchivedSessions);
+  const createSession = useCreatePresenceSession();
+  const updateSession = useUpdatePresenceSession();
+  const deleteSession = useDeletePresenceSession();
 
-  useEffect(() => {
-    fetchPresence();
-  }, [selectedSessionId, showArchived]);
-
-  const fetchSessions = async () => {
-    const res = await fetch(`/api/presence/sessions${showArchivedSessions ? '?all=true' : ''}`);
-    const data = await res.json();
-    setSessions(data);
-    
-    // Set default selected session to the active one if none selected
-    if (selectedSessionId === 'all' && data.length > 0) {
-      const active = data.find((s: PresenceSession) => s.isActive);
-      if (active) setSelectedSessionId(active.id);
-    }
-  };
-
-  const fetchPresence = async () => {
-    let url = `/api/presence?${showArchived ? 'all=true' : ''}`;
-    if (selectedSessionId !== 'all') {
-      url += `&sessionId=${selectedSessionId}`;
-    }
-    const res = await fetch(url);
-    const data = await res.json();
-    setPresenceList(data);
-  };
-
-  const handleAddSession = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const res = await fetch('/api/presence/sessions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newSession),
-    });
-    if (res.ok) {
-      const session = await res.json();
-      setIsAddingSession(false);
-      setNewSession({ name: '', description: '', isActive: true });
-      await fetchSessions();
-      setSelectedSessionId(session.id);
-    }
-  };
-
-  const toggleSessionActive = async (session: PresenceSession) => {
-    const res = await fetch('/api/presence/sessions', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...session, isActive: !session.isActive }),
-    });
-    if (res.ok) fetchSessions();
-  };
-
-  const toggleSessionVisibility = async (session: PresenceSession) => {
-    const res = await fetch('/api/presence/sessions', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...session, isVisible: !session.isVisible }),
-    });
-    if (res.ok) fetchSessions();
-  };
-
-  const toggleSessionArchive = async (session: PresenceSession) => {
-    const action = session.isArchived ? 'unarchive' : 'archive';
-    if (!confirm(`Are you sure you want to ${action} this session?`)) return;
-    const res = await fetch('/api/presence/sessions', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...session, isArchived: !session.isArchived, isActive: false }),
-    });
-    if (res.ok) fetchSessions();
-  };
+  const { data: presenceList = [], isLoading: recordsLoading } = usePresenceRecords(selectedSessionId, showArchived);
+  const updateRecord = useUpdatePresenceRecord();
+  const deleteRecord = useDeletePresenceRecord();
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     router.push('/admin/login');
   };
 
-  const toggleVisibility = async (p: Presence) => {
-    const res = await fetch('/api/presence', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: p.id, isVisible: !p.isVisible, isArchived: p.isArchived }),
+  const handleAddSession = (e: React.FormEvent) => {
+    e.preventDefault();
+    createSession.mutate(newSession, {
+      onSuccess: (data) => {
+        setIsAddingSession(false);
+        setNewSession({ name: '', description: '', isActive: true });
+        setSelectedSessionId(data.id);
+      }
     });
-    if (res.ok) fetchPresence();
   };
 
-  const toggleArchive = async (p: Presence) => {
-    const action = p.isArchived ? 'unarchive' : 'archive';
-    if (!confirm(`Are you sure you want to ${action} this entry?`)) return;
-    const res = await fetch('/api/presence', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: p.id, isVisible: p.isVisible, isArchived: !p.isArchived }),
-    });
-    if (res.ok) fetchPresence();
+  const toggleSessionActive = (session: PresenceSession) => {
+    updateSession.mutate({ ...session, isActive: !session.isActive });
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to PERMANENTLY delete this entry?')) return;
-    const res = await fetch(`/api/presence?id=${id}`, {
-      method: 'DELETE',
-    });
-    if (res.ok) fetchPresence();
+  const toggleSessionVisibility = (session: PresenceSession) => {
+    updateSession.mutate({ ...session, isVisible: !session.isVisible });
+  };
+
+  const toggleSessionArchive = (session: PresenceSession) => {
+    updateSession.mutate({ ...session, isArchived: !session.isArchived, isActive: false });
+  };
+
+  const toggleVisibility = (p: PresenceRecord) => {
+    updateRecord.mutate({ id: p.id, isVisible: !p.isVisible });
+  };
+
+  const toggleArchive = (p: PresenceRecord) => {
+    updateRecord.mutate({ id: p.id, isArchived: !p.isArchived });
   };
 
   const exportToCSV = () => {
@@ -175,18 +124,19 @@ export default function AdminPresencePage() {
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-red-600 font-semibold hover:bg-red-50 px-4 py-2 rounded-lg transition"
-          >
-            <LogOut size={20} /> Logout
-          </button>
+          <Button variant="destructive" onClick={handleLogout} className="flex items-center gap-2">
+            <LogOut size={18} /> Logout
+          </Button>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex gap-4 mb-10">
-           <a href="/admin" className="bg-white text-gray-600 px-6 py-2 rounded-full font-bold border hover:bg-gray-50 transition">Links</a>
-           <a href="/admin/presence" className="bg-[#FF7F50] text-white px-6 py-2 rounded-full font-bold shadow-sm">Presence</a>
+           <Button asChild variant="outline" className="bg-white text-gray-600 rounded-full font-bold">
+            <a href="/admin">Links</a>
+          </Button>
+          <Button asChild variant="default" className="bg-[#FF7F50] hover:bg-[#FF7F50]/90 text-white rounded-full font-bold shadow-sm">
+            <a href="/admin/presence">Presence</a>
+          </Button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-10">
@@ -197,90 +147,83 @@ export default function AdminPresencePage() {
                 <Settings size={18} className="text-gray-400" />
                 Sessions
               </h3>
-              <button 
-                onClick={() => setIsAddingSession(true)}
-                className="p-1 bg-indigo-600 text-white rounded hover:bg-indigo-700 transition"
-                title="Add New Session"
-              >
+              <Button size="icon" variant="outline" onClick={() => setIsAddingSession(true)} className="h-8 w-8 bg-indigo-600 text-white hover:bg-indigo-700 hover:text-white border-none">
                 <Plus size={18} />
-              </button>
+              </Button>
             </div>
 
             {isAddingSession && (
-              <form onSubmit={handleAddSession} className="bg-white p-4 rounded-xl shadow-sm border space-y-3">
-                <input 
-                  type="text" 
-                  placeholder="Session Name" 
-                  required
-                  value={newSession.name}
-                  onChange={e => setNewSession({...newSession, name: e.target.value})}
-                  className="w-full text-sm border p-2 rounded text-gray-900"
-                />
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={() => setIsAddingSession(false)} className="text-xs text-gray-500">Cancel</button>
-                  <button type="submit" className="text-xs bg-indigo-600 text-white px-3 py-1 rounded">Create</button>
-                </div>
-              </form>
+              <Card className="shadow-sm">
+                <CardContent className="pt-4 space-y-3">
+                  <Input 
+                    placeholder="Session Name" 
+                    required
+                    value={newSession.name}
+                    onChange={e => setNewSession({...newSession, name: e.target.value})}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setIsAddingSession(false)}>Cancel</Button>
+                    <Button size="sm" onClick={handleAddSession} disabled={createSession.isPending}>
+                      {createSession.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
             )}
 
             <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-              <button
+              <Button
+                variant={selectedSessionId === 'all' ? 'default' : 'outline'}
+                className={`w-full justify-between rounded-xl h-auto py-3 ${selectedSessionId === 'all' ? 'bg-indigo-600' : 'bg-white'}`}
                 onClick={() => setSelectedSessionId('all')}
-                className={`w-full text-left px-4 py-3 rounded-xl transition flex items-center justify-between ${selectedSessionId === 'all' ? 'bg-indigo-600 text-white shadow-md font-bold' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
               >
                 <span className="flex items-center gap-2"><ListFilter size={16} /> All Records</span>
-              </button>
+              </Button>
 
-              {sessions.map(session => (
-                <div key={session.id} className="group relative">
-                  <button
-                    onClick={() => setSelectedSessionId(session.id)}
-                    className={`w-full text-left px-4 py-3 rounded-xl transition flex flex-col ${selectedSessionId === session.id ? 'bg-[#FF7F50] text-white shadow-md' : 'bg-white text-gray-600 hover:bg-gray-100 border'}`}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="font-bold truncate pr-4">{session.name}</span>
-                      {session.isActive && <Check size={16} className={selectedSessionId === session.id ? 'text-white' : 'text-green-600'} />}
+              {sessionsLoading ? (
+                <div className="flex justify-center py-4"><Loader2 className="animate-spin text-gray-400" /></div>
+              ) : (
+                sessions.map(session => (
+                  <div key={session.id} className="group relative">
+                    <Button
+                      variant={selectedSessionId === session.id ? 'default' : 'outline'}
+                      className={`w-full flex-col items-start rounded-xl h-auto py-3 pr-10 ${selectedSessionId === session.id ? 'bg-[#FF7F50]' : 'bg-white'}`}
+                      onClick={() => setSelectedSessionId(session.id)}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold truncate">{session.name}</span>
+                        {session.isActive && <Check size={16} className={selectedSessionId === session.id ? 'text-white' : 'text-green-600'} />}
+                      </div>
+                      <span className={`text-[10px] mt-1 ${selectedSessionId === session.id ? 'text-white/80' : 'text-gray-400'}`}>
+                        {new Date(session.createdAt).toLocaleDateString()}
+                      </span>
+                    </Button>
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
+                      <Button size="icon" variant="ghost" className="h-7 w-7 p-0" onClick={() => toggleSessionActive(session)}>
+                        <Check size={14} className={session.isActive ? 'text-green-600' : 'text-gray-400'} />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 p-0" onClick={() => toggleSessionVisibility(session)}>
+                        {session.isVisible ? <Eye size={14} className="text-indigo-600" /> : <EyeOff size={14} className="text-gray-400" />}
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7 p-0 text-orange-600" onClick={() => toggleSessionArchive(session)}>
+                        <Archive size={14} />
+                      </Button>
                     </div>
-                    <span className={`text-[10px] mt-1 ${selectedSessionId === session.id ? 'text-white/80' : 'text-gray-400'}`}>
-                      {new Date(session.createdAt).toLocaleDateString()}
-                    </span>
-                  </button>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 hidden group-hover:flex gap-1">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleSessionActive(session); }}
-                      className={`p-1 rounded ${session.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}
-                      title={session.isActive ? 'Deactivate' : 'Set as Active'}
-                    >
-                      <Check size={14} />
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleSessionVisibility(session); }}
-                      className={`p-1 rounded ${session.isVisible ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-400'}`}
-                      title={session.isVisible ? 'Hide from home' : 'Show on home'}
-                    >
-                      {session.isVisible ? <Eye size={14} /> : <EyeOff size={14} />}
-                    </button>
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); toggleSessionArchive(session); }}
-                      className="p-1 bg-orange-100 text-orange-700 rounded"
-                      title="Archive Session"
-                    >
-                      <Archive size={14} />
-                    </button>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
-            <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer pt-2">
-              <input 
-                type="checkbox" 
+            <div className="flex items-center space-x-2 pt-2">
+              <Checkbox 
+                id="show-archived-sessions" 
                 checked={showArchivedSessions} 
-                onChange={(e) => setShowArchivedSessions(e.target.checked)}
-                className="rounded"
+                onCheckedChange={(checked) => setShowArchivedSessions(!!checked)}
               />
-              Show Archived Sessions
-            </label>
+              <label htmlFor="show-archived-sessions" className="text-xs text-gray-500 cursor-pointer">
+                Show Archived Sessions
+              </label>
+            </div>
           </div>
 
           {/* Presence Table */}
@@ -293,94 +236,117 @@ export default function AdminPresencePage() {
                 </h2>
                 <div className="flex items-center gap-4 mt-1">
                   <p className="text-gray-500 text-sm">Total: <span className="font-bold text-gray-900">{presenceList.length}</span></p>
-                  <label className="flex items-center gap-2 text-xs text-gray-500 cursor-pointer">
-                    <input 
-                      type="checkbox" 
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="show-archived-records" 
                       checked={showArchived} 
-                      onChange={(e) => setShowArchived(e.target.checked)}
-                      className="rounded"
+                      onCheckedChange={(checked) => setShowArchived(!!checked)}
                     />
-                    Show Hidden/Archived Records
-                  </label>
+                    <label htmlFor="show-archived-records" className="text-xs text-gray-500 cursor-pointer">
+                      Show Hidden/Archived Records
+                    </label>
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={exportToCSV}
-                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-xl hover:bg-green-700 transition shadow-md font-semibold text-sm"
-              >
-                <Download size={18} /> Export CSV
-              </button>
+              <Button variant="outline" onClick={exportToCSV} className="bg-green-600 text-white hover:bg-green-700 hover:text-white font-semibold">
+                <Download size={18} className="mr-2" /> Export CSV
+              </Button>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Name</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Institution</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Check-in Time</th>
-                      <th className="px-6 py-4 text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {presenceList.map((p) => (
-                      <tr key={p.id} className={`hover:bg-gray-50 transition ${p.isArchived ? 'bg-gray-50 opacity-60' : ''} ${!p.isVisible ? 'bg-yellow-50/30' : ''}`}>
-                        <td className="px-6 py-5">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-gray-50/50">
+                    <TableHead className="px-6 py-4 font-bold text-gray-700">Name</TableHead>
+                    <TableHead className="px-6 py-4 font-bold text-gray-700">Institution</TableHead>
+                    <TableHead className="px-6 py-4 font-bold text-gray-700">Check-in Time</TableHead>
+                    <TableHead className="px-6 py-4 font-bold text-gray-700 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recordsLoading ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-20 px-6">
+                        <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
+                      </TableCell>
+                    </TableRow>
+                  ) : presenceList.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-20 px-6 text-gray-500">
+                        No entries found.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    presenceList.map((p) => (
+                      <TableRow key={p.id} className={`${p.isArchived ? 'bg-gray-50 opacity-60' : ''} ${!p.isVisible ? 'bg-yellow-50/30' : ''} hover:bg-gray-50/50 transition-colors`}>
+                        <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-2">
                             <p className="font-bold text-gray-900 text-sm">{p.name}</p>
                             {p.isArchived && <span className="text-[8px] bg-gray-200 px-1 rounded font-bold uppercase">Archived</span>}
                           </div>
                           <p className="text-[10px] text-gray-400 truncate max-w-[150px]">{p.email}</p>
-                        </td>
-                        <td className="px-6 py-5">
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-1 text-gray-600">
                             <Building size={12} className="text-gray-400" />
                             <span className="text-xs truncate max-w-[150px]">{p.institution}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-5">
+                        </TableCell>
+                        <TableCell className="px-6 py-4">
                           <div className="flex items-center gap-2 text-xs text-gray-400">
                             <Clock size={12} />
                             {new Date(p.checkInTime).toLocaleString('id-ID', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                           </div>
-                        </td>
-                        <td className="px-6 py-5">
-                          <div className="flex items-center gap-1">
-                            <button 
-                              onClick={() => toggleVisibility(p)} 
-                              className={`p-1 rounded transition ${p.isVisible ? 'text-indigo-600 hover:bg-indigo-50' : 'text-gray-400 hover:bg-gray-100'}`}
-                            >
-                              {p.isVisible ? <Eye size={16} /> : <EyeOff size={16} />}
-                            </button>
-                            <button 
-                              onClick={() => toggleArchive(p)} 
-                              className={`p-1 rounded transition ${p.isArchived ? 'text-orange-600 hover:bg-orange-50' : 'text-gray-400 hover:bg-gray-100'}`}
-                            >
-                              <Archive size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleDelete(p.id)} 
-                              className="p-1 rounded text-red-600 hover:bg-red-50 transition"
-                            >
+                        </TableCell>
+                        <TableCell className="px-6 py-4 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => toggleVisibility(p)} disabled={updateRecord.isPending}>
+                              {p.isVisible ? <Eye size={16} className="text-indigo-600" /> : <EyeOff size={16} className="text-gray-400" />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9" onClick={() => toggleArchive(p)} disabled={updateRecord.isPending}>
+                              <Archive size={16} className={p.isArchived ? 'text-orange-600' : 'text-gray-400'} />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-9 w-9 text-red-600" onClick={() => setDeleteConfirmId({ type: 'record', id: p.id })}>
                               <Trash2 size={16} />
-                            </button>
+                            </Button>
                           </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {presenceList.length === 0 && (
-                <div className="text-center py-20 text-gray-500">
-                   No entries found.
-                </div>
-              )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
             </div>
           </div>
         </div>
       </div>
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the {deleteConfirmId?.type} from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (!deleteConfirmId) return;
+                if (deleteConfirmId.type === 'session') {
+                  deleteSession.mutate(deleteConfirmId.id);
+                } else {
+                  deleteRecord.mutate(deleteConfirmId.id);
+                }
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

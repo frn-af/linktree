@@ -1,28 +1,53 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Save, X, ExternalLink, LogOut, Users, Presentation, Eye, EyeOff, Archive } from 'lucide-react';
+import { useState } from 'react';
+import { Plus, Trash2, Edit2, Save, X, LogOut, Eye, EyeOff, Archive, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { type Link } from '@/lib/db';
+import { useLinks, useCreateLink, useUpdateLink, useDeleteLink, type Link } from '@/hooks/use-links';
+import { useSettings, useUpdateSetting } from '@/hooks/use-settings';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function AdminPage() {
-  const [links, setLinks] = useState<Link[]>([]);
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showArchived, setShowArchived] = useState(false);
   const [newLink, setNewLink] = useState({ title: '', url: '', order: 0 });
-  const [editForm, setEditForm] = useState({ title: '', url: '', order: 0, isVisible: true, isArchived: false });
+  const [editForm, setEditForm] = useState<Partial<Link>>({});
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  
+  // Settings State
+  const [isEditingSettings, setIsEditingSettings] = useState(false);
+  const [settingsForm, setSettingsForm] = useState({ title: '', subtitle: '' });
+
   const router = useRouter();
 
-  useEffect(() => {
-    fetchLinks();
-  }, [showArchived]);
-
-  const fetchLinks = async () => {
-    const res = await fetch(`/api/links${showArchived ? '?all=true' : ''}`);
-    const data = await res.json();
-    setLinks(data);
-  };
+  const { data: links = [], isLoading } = useLinks(showArchived);
+  const { data: settings = {} } = useSettings();
+  const updateSetting = useUpdateSetting();
+  const createLink = useCreateLink();
+  const updateLink = useUpdateLink();
+  const deleteLink = useDeleteLink();
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -31,65 +56,46 @@ export default function AdminPage() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = await fetch('/api/links', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newLink),
+    createLink.mutate({ ...newLink, order: links.length }, {
+      onSuccess: () => {
+        setNewLink({ title: '', url: '', order: 0 });
+        setIsAdding(false);
+      }
     });
-    if (res.ok) {
-      setNewLink({ title: '', url: '', order: links.length + 1 });
-      setIsAdding(false);
-      fetchLinks();
-    }
   };
 
   const handleUpdate = async (id: string, updates?: Partial<Link>) => {
-    const linkToUpdate = links.find(l => l.id === id);
-    if (!linkToUpdate) return;
-
-    const res = await fetch('/api/links', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        id, 
-        ...(updates || editForm) 
-      }),
+    updateLink.mutate({ id, ...(updates || editForm) }, {
+      onSuccess: () => setEditingId(null)
     });
-    if (res.ok) {
-      setEditingId(null);
-      fetchLinks();
-    }
   };
 
-  const toggleVisibility = async (link: Link) => {
-    await handleUpdate(link.id, { ...link, isVisible: !link.isVisible });
+  const toggleVisibility = (link: Link) => {
+    handleUpdate(link.id, { isVisible: !link.isVisible });
   };
 
-  const toggleArchive = async (link: Link) => {
-    const action = link.isArchived ? 'unarchive' : 'archive';
-    if (!confirm(`Are you sure you want to ${action} this link?`)) return;
-    await handleUpdate(link.id, { ...link, isArchived: !link.isArchived });
-  };
-
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to PERMANENTLY delete this link?')) return;
-    const res = await fetch(`/api/links?id=${id}`, {
-      method: 'DELETE',
-    });
-    if (res.ok) {
-      fetchLinks();
-    }
+  const toggleArchive = (link: Link) => {
+    handleUpdate(link.id, { isArchived: !link.isArchived });
   };
 
   const startEditing = (link: Link) => {
     setEditingId(link.id);
-    setEditForm({ 
-      title: link.title, 
-      url: link.url, 
-      order: link.order,
-      isVisible: link.isVisible,
-      isArchived: link.isArchived
+    setEditForm(link);
+  };
+
+  const handleUpdateSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await updateSetting.mutateAsync({ key: 'site_title', value: settingsForm.title });
+    await updateSetting.mutateAsync({ key: 'site_subtitle', value: settingsForm.subtitle });
+    setIsEditingSettings(false);
+  };
+
+  const startEditingSettings = () => {
+    setSettingsForm({
+      title: settings['site_title'] || 'Lokakarya Monitoring RPJP dan Penyusunan RPJPn KSA/KPA',
+      subtitle: settings['site_subtitle'] || 'Lingkup Balai Besar KSDA Papua Barat Daya'
     });
+    setIsEditingSettings(true);
   };
 
   return (
@@ -97,152 +103,238 @@ export default function AdminPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 text-red-600 font-semibold hover:bg-red-50 px-4 py-2 rounded-lg transition"
-          >
-            <LogOut size={20} /> Logout
-          </button>
+          <Button variant="destructive" onClick={handleLogout} className="flex items-center gap-2">
+            <LogOut size={18} /> Logout
+          </Button>
         </div>
 
         {/* Navigation Tabs */}
         <div className="flex gap-4 mb-8">
-           <a href="/admin" className="bg-[#FF7F50] text-white px-6 py-2 rounded-full font-bold shadow-sm">Links</a>
-           <a href="/admin/presence" className="bg-white text-gray-600 px-6 py-2 rounded-full font-bold border hover:bg-gray-50 transition">Presence</a>
+          <Button asChild variant="default" className="bg-[#FF7F50] hover:bg-[#FF7F50]/90 rounded-full font-bold">
+            <a href="/admin">Links</a>
+          </Button>
+          <Button asChild variant="outline" className="bg-white text-gray-600 rounded-full font-bold">
+            <a href="/admin/presence">Presence</a>
+          </Button>
         </div>
 
+        {/* Site Settings Section */}
+        <Card className="mb-8 border-indigo-100 shadow-md">
+          <CardHeader className="pb-3">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-xl">Page Settings</CardTitle>
+                <CardDescription>Manage the main title and subtitle of your Linktree</CardDescription>
+              </div>
+              {!isEditingSettings && (
+                <Button variant="outline" size="sm" onClick={startEditingSettings} className="flex items-center gap-2">
+                  <Edit2 size={16} /> Edit Settings
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isEditingSettings ? (
+              <form onSubmit={handleUpdateSettings} className="space-y-4">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Site Title</label>
+                    <Input 
+                      value={settingsForm.title} 
+                      onChange={e => setSettingsForm({...settingsForm, title: e.target.value})} 
+                      placeholder="Main Title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Subtitle</label>
+                    <Input 
+                      value={settingsForm.subtitle} 
+                      onChange={e => setSettingsForm({...settingsForm, subtitle: e.target.value})} 
+                      placeholder="Subtitle"
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="ghost" onClick={() => setIsEditingSettings(false)}>Cancel</Button>
+                  <Button type="submit" disabled={updateSetting.isPending}>
+                    {updateSetting.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Save Settings
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-2">
+                <div className="grid grid-cols-3 py-2 border-b border-gray-50">
+                  <span className="text-sm font-bold text-gray-500">Title</span>
+                  <span className="col-span-2 text-sm text-gray-900 font-semibold">{settings['site_title'] || 'Lokakarya Monitoring RPJP dan Penyusunan RPJPn KSA/KPA'}</span>
+                </div>
+                <div className="grid grid-cols-3 py-2">
+                  <span className="text-sm font-bold text-gray-500">Subtitle</span>
+                  <span className="col-span-2 text-sm text-gray-600">{settings['site_subtitle'] || 'Lingkup Balai Besar KSDA Papua Barat Daya'}</span>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         <div className="flex justify-between items-center mb-6">
-           <div>
+          <div className="space-y-1">
             <h2 className="text-xl font-bold text-gray-800">Additional Links</h2>
-            <label className="flex items-center gap-2 mt-2 text-sm text-gray-600 cursor-pointer">
-              <input 
-                type="checkbox" 
+            <div className="flex items-center space-x-2">
+              <Checkbox 
+                id="show-archived" 
                 checked={showArchived} 
-                onChange={(e) => setShowArchived(e.target.checked)}
-                className="rounded"
+                onCheckedChange={(checked) => setShowArchived(!!checked)}
               />
-              Show Archived Links
-            </label>
-           </div>
-           <button
-            onClick={() => setIsAdding(true)}
-            className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm"
-          >
+              <label htmlFor="show-archived" className="text-sm text-gray-600 cursor-pointer">
+                Show Archived Links
+              </label>
+            </div>
+          </div>
+          <Button onClick={() => setIsAdding(true)} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700">
             <Plus size={20} /> Add New Link
-          </button>
+          </Button>
         </div>
 
         {isAdding && (
           <form onSubmit={handleAdd} className="bg-white p-6 rounded-xl shadow-md mb-8 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
-                type="text"
+              <Input
                 placeholder="Title"
                 value={newLink.title}
                 onChange={(e) => setNewLink({ ...newLink, title: e.target.value })}
-                className="border p-2 rounded w-full text-gray-900"
                 required
               />
-              <input
+              <Input
                 type="url"
                 placeholder="URL"
                 value={newLink.url}
                 onChange={(e) => setNewLink({ ...newLink, url: e.target.value })}
-                className="border p-2 rounded w-full text-gray-900"
                 required
               />
             </div>
             <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setIsAdding(false)}
-                className="px-4 py-2 text-gray-600 hover:text-gray-800"
-              >
+              <Button type="button" variant="ghost" onClick={() => setIsAdding(false)}>
                 Cancel
-              </button>
-              <button
-                type="submit"
-                className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-700 transition"
-              >
+              </Button>
+              <Button type="submit" disabled={createLink.isPending}>
+                {createLink.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Link
-              </button>
+              </Button>
             </div>
           </form>
         )}
 
-        <div className="space-y-4">
-          {links.map((link) => (
-            <div key={link.id} className={`bg-white p-4 rounded-xl shadow-sm border flex items-center justify-between ${link.isArchived ? 'opacity-60 bg-gray-100' : ''}`}>
-              {editingId === link.id ? (
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-2 mr-4">
-                  <input
-                    type="text"
-                    value={editForm.title}
-                    onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                    className="border p-1 rounded text-gray-900"
-                  />
-                  <input
-                    type="url"
-                    value={editForm.url}
-                    onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
-                    className="border p-1 rounded text-gray-900"
-                  />
-                </div>
+        <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-gray-50/50">
+                <TableHead className="px-6 py-4 font-bold text-gray-700">Title</TableHead>
+                <TableHead className="hidden md:table-cell px-6 py-4 font-bold text-gray-700">URL</TableHead>
+                <TableHead className="text-right px-6 py-4 font-bold text-gray-700">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-10">
+                    <Loader2 className="mx-auto h-8 w-8 animate-spin text-gray-400" />
+                  </TableCell>
+                </TableRow>
+              ) : links.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={3} className="text-center py-10 text-gray-500">
+                    No links found.
+                  </TableCell>
+                </TableRow>
               ) : (
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-gray-800">{link.title}</h3>
-                    {link.isArchived && <span className="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">Archived</span>}
-                    {!link.isVisible && <span className="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">Hidden</span>}
-                  </div>
-                  <p className="text-sm text-gray-500 truncate max-w-xs md:max-w-md">{link.url}</p>
-                </div>
+                links.map((link) => (
+                  <TableRow key={link.id} className={`${link.isArchived ? 'opacity-60 bg-gray-50' : ''} hover:bg-gray-50/50 transition-colors`}>
+                    <TableCell className="px-6 py-4">
+                      {editingId === link.id ? (
+                        <Input
+                          value={editForm.title}
+                          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                          className="h-9"
+                        />
+                      ) : (
+                        <div>
+                          <div className="font-semibold text-gray-800 flex items-center gap-2">
+                            {link.title}
+                            {link.isArchived && <span className="bg-gray-200 text-gray-600 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">Archived</span>}
+                            {!link.isVisible && <span className="bg-yellow-100 text-yellow-700 text-[10px] px-2 py-0.5 rounded-full uppercase font-bold">Hidden</span>}
+                          </div>
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell px-6 py-4">
+                      {editingId === link.id ? (
+                        <Input
+                          type="url"
+                          value={editForm.url}
+                          onChange={(e) => setEditForm({ ...editForm, url: e.target.value })}
+                          className="h-9"
+                        />
+                      ) : (
+                        <span className="text-sm text-gray-500 truncate max-w-xs block">{link.url}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        {editingId === link.id ? (
+                          <>
+                            <Button size="icon" variant="ghost" className="text-green-600" onClick={() => handleUpdate(link.id)} disabled={updateLink.isPending}>
+                              {updateLink.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save size={18} />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="text-gray-400" onClick={() => setEditingId(null)}>
+                              <X size={18} />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Button size="icon" variant="ghost" onClick={() => toggleVisibility(link)} disabled={updateLink.isPending} className={link.isVisible ? 'text-indigo-600' : 'text-gray-400'}>
+                              {link.isVisible ? <Eye size={18} /> : <EyeOff size={18} />}
+                            </Button>
+                            <Button size="icon" variant="ghost" className="text-blue-600" onClick={() => startEditing(link)}>
+                              <Edit2 size={18} />
+                            </Button>
+                            <Button size="icon" variant="ghost" onClick={() => toggleArchive(link)} disabled={updateLink.isPending} className={link.isArchived ? 'text-orange-600' : 'text-gray-400'}>
+                              <Archive size={18} />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="text-red-600" onClick={() => setDeleteConfirmId(link.id)}>
+                              <Trash2 size={18} />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
               )}
-
-              <div className="flex items-center gap-1 md:gap-2">
-                {editingId === link.id ? (
-                  <>
-                    <button onClick={() => handleUpdate(link.id)} className="text-green-600 p-2 hover:bg-green-50 rounded">
-                      <Save size={20} />
-                    </button>
-                    <button onClick={() => setEditingId(null)} className="text-gray-400 p-2 hover:bg-gray-50 rounded">
-                      <X size={20} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <button 
-                      onClick={() => toggleVisibility(link)} 
-                      className={`${link.isVisible ? 'text-indigo-600' : 'text-gray-400'} p-2 hover:bg-indigo-50 rounded transition-colors`}
-                      title={link.isVisible ? 'Hide from public' : 'Show to public'}
-                    >
-                      {link.isVisible ? <Eye size={20} /> : <EyeOff size={20} />}
-                    </button>
-                    <button onClick={() => startEditing(link)} className="text-blue-600 p-2 hover:bg-blue-50 rounded">
-                      <Edit2 size={20} />
-                    </button>
-                    <button 
-                      onClick={() => toggleArchive(link)} 
-                      className={`${link.isArchived ? 'text-orange-600' : 'text-gray-400'} p-2 hover:bg-orange-50 rounded transition-colors`}
-                      title={link.isArchived ? 'Unarchive' : 'Archive'}
-                    >
-                      <Archive size={20} />
-                    </button>
-                    <button onClick={() => handleDelete(link.id)} className="text-red-600 p-2 hover:bg-red-50 rounded">
-                      <Trash2 size={20} />
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          ))}
-          {links.length === 0 && (
-            <div className="text-center py-10 text-gray-500 bg-white rounded-xl border border-dashed">
-              No links found. {showArchived ? '' : 'Try checking "Show Archived Links"'}
-            </div>
-          )}
+            </TableBody>
+          </Table>
         </div>
       </div>
+
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the link from the database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteConfirmId && deleteLink.mutate(deleteConfirmId)}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
