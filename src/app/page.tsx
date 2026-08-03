@@ -107,7 +107,7 @@ export default function Home() {
 
 					{/* Footer */}
 					<div className="mt-16 text-white text-sm text-center italic">
-						Jangan Aneh2, Gunakan Data Semestinya Jangan Sampai Bocor!!!!!!!
+						Gunakan Data Semestinya!!!!!!!
 					</div>
 				</div>
 			</div>
